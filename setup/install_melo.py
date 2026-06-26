@@ -32,6 +32,9 @@ MELO_EN_DEPS = [
     "cached_path",
     "gruut-ipa",
     "gruut_lang_en",
+    "mecab-python3",
+    "unidic",
+    "unidic-lite",
 ]
 
 
@@ -70,6 +73,12 @@ def install_melo() -> bool:
         )
         return False
 
+    # MeCab system libs + Japanese dictionary (MeloTTS imports japanese at load time)
+    subprocess.run(
+        ["apt-get", "install", "-y", "mecab", "libmecab-dev", "mecab-ipadic-utf8"],
+        capture_output=True,
+    )
+
     # setuptools 82+ breaks torch on Colab
     run(["pip", "install", "-q", "pip", "setuptools<82", "wheel"])
 
@@ -102,12 +111,16 @@ def install_melo() -> bool:
         ]
     )
 
+    print("  Downloading unidic dictionary (~500 MB, one-time)…")
+    run([sys.executable, "-m", "unidic", "download"])
+
     if verify_melo():
         print("✅ MeloTTS installed successfully")
         return True
 
     print("❌ MeloTTS import failed after install.")
-    print("   Try: Runtime version → 2025.07, restart, re-run setup.")
+    print("   Run manually: python -m unidic download")
+    print("   Then: Runtime version → 2025.07, restart, re-run setup.")
     return False
 
 

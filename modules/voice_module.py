@@ -30,7 +30,7 @@ def is_melo_available() -> bool:
     try:
         from melo.api import TTS  # noqa: F401
         return True
-    except ImportError:
+    except Exception:
         return False
 
 _tone_color_converter = None
