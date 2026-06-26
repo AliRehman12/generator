@@ -40,9 +40,11 @@ echo "    MusePose ready."
 echo "=== [6/8] Installing Python packages ==="
 # Colab pre-installs gradio 5.x + starlette 1.0 + pydantic 2.11 — pin compatible versions
 pip uninstall -y gradio fastapi starlette 2>/dev/null || true
-pip install -q "setuptools<82" "pydantic==2.10.6" "huggingface_hub==0.25.2"
+pip install -q "setuptools<82" "pydantic==2.10.6"
 pip install -q "starlette<1.0,>=0.37" "fastapi<0.116,>=0.110"
 pip install -q --force-reinstall "gradio==4.44.1"
+# Pin huggingface_hub AFTER gradio — gradio 4.44 needs HfFolder (removed in hf_hub 1.0+)
+pip install -q --force-reinstall "huggingface_hub==0.25.2"
 
 pip install -q \
   torch torchvision torchaudio \
@@ -65,8 +67,9 @@ python "$SCRIPT_DIR/install_melo.py" || true
 echo "=== [8/8] Skipping repo requirements.txt (avoids numpy rebuild conflicts on Colab) ==="
 echo "    Core deps already installed above."
 
-# Keep Gradio stack compatible after other installs
-pip install -q "pydantic==2.10.6" "starlette<1.0,>=0.37" "fastapi<0.116,>=0.110" "gradio==4.44.1" "huggingface_hub==0.25.2"
+# Keep Gradio stack compatible after other installs — huggingface_hub MUST be pinned last
+pip install -q "pydantic==2.10.6" "starlette<1.0,>=0.37" "fastapi<0.116,>=0.110" "gradio==4.44.1"
+pip install -q --force-reinstall "huggingface_hub==0.25.2"
 
 echo ""
 if [ "$PY_MINOR" -ge 12 ]; then
