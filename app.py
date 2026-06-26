@@ -18,6 +18,12 @@ import torch
 from config import DEVICE, DRIVE_OUTPUT_DIR, TEMP_DIR
 from modules.vram_utils import clear_vram, get_vram_usage
 
+try:
+    from modules.voice_module import is_melo_available
+except ImportError:
+    def is_melo_available():
+        return False
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,6 +44,7 @@ def _system_status() -> str:
         lines.append("GPU      : No CUDA GPU (running on CPU/MPS)")
     drive_ok = os.path.exists("/content/drive/MyDrive")
     lines.append(f"Drive    : {'Mounted ✓' if drive_ok else 'Not mounted — run Cell 1'}")
+    lines.append(f"Voice clone: {'Available ✓' if is_melo_available() else 'Unavailable (use Kokoro or runtime 2025.07)'}")
     return "\n".join(lines)
 
 
@@ -70,6 +77,13 @@ def generate_audio_preview(
         output_path = os.path.join(TEMP_DIR, f"audio_preview_{_timestamp()}.wav")
 
         if use_cloning:
+            from modules.voice_module import is_melo_available
+            if not is_melo_available():
+                return None, (
+                    "Voice cloning requires MeloTTS (Python 3.11).\n"
+                    "Switch Colab runtime to 2025.07, restart, and re-run setup — "
+                    "OR uncheck 'Use voice cloning' and pick a Kokoro preset voice."
+                )
             if not reference_audio:
                 return None, "Please upload or record a voice sample first."
             if not script_text or not script_text.strip():
@@ -310,13 +324,19 @@ with gr.Blocks(title="AI Avatar Video Generator", theme=gr.themes.Soft()) as dem
                     )
                 use_cloning_cb = gr.Checkbox(
                     label="Use voice cloning (uncheck to use a preset Kokoro voice)",
-                    value=True,
+                    value=is_melo_available(),
+                    interactive=is_melo_available(),
                 )
+                if not is_melo_available():
+                    gr.Markdown(
+                        "> ⚠️ **Voice cloning disabled** — you are on Python 3.12. "
+                        "Use a Kokoro preset voice below, or switch Colab runtime to **2025.07**."
+                    )
                 kokoro_dd = gr.Dropdown(
                     choices=["af_heart", "af_bella", "am_adam", "bf_emma", "bm_george"],
                     value="af_heart",
                     label="Kokoro preset voice (active when cloning is OFF)",
-                    visible=False,
+                    visible=not is_melo_available(),
                 )
                 gen_audio_btn = gr.Button("🔊 Generate audio preview", variant="primary")
 

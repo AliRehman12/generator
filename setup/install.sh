@@ -1,17 +1,18 @@
 #!/bin/bash
 # Idempotent environment setup script for Google Colab T4.
-# Safe to run multiple times — skips steps that are already done.
 set -e
 
 echo "=== [1/8] Checking Python version ==="
+PY_MINOR=$(python -c "import sys; print(sys.version_info.minor)")
 python -c "
 import sys
 v = sys.version_info
 print(f'    Python {v.major}.{v.minor}.{v.micro}')
 if v >= (3, 12):
-    print('    ⚠️  Python 3.12 — voice cloning needs runtime version 2025.07 (Python 3.11)')
+    print('    ⚠️  Python 3.12 — voice cloning DISABLED (need runtime 2025.07)')
+    print('    ✅  Kokoro TTS + SadTalker will still work')
 else:
-    print('    ✅ Python version OK for MeloTTS')
+    print('    ✅ Python version OK for voice cloning')
 "
 
 echo "=== [2/8] Installing system dependencies ==="
@@ -21,33 +22,28 @@ echo "    ffmpeg + libsndfile1 ready."
 echo "=== [3/8] Cloning SadTalker ==="
 if [ ! -d "/content/SadTalker" ]; then
   git clone https://github.com/OpenTalker/SadTalker.git /content/SadTalker
-  echo "    SadTalker cloned."
-else
-  echo "    SadTalker already present — skipping clone."
 fi
+echo "    SadTalker ready."
 
 echo "=== [4/8] Cloning OpenVoice v2 ==="
 if [ ! -d "/content/OpenVoice" ]; then
   git clone https://github.com/myshell-ai/OpenVoice.git /content/OpenVoice
-  echo "    OpenVoice cloned."
-else
-  echo "    OpenVoice already present — skipping clone."
 fi
+echo "    OpenVoice ready."
 
 echo "=== [5/8] Cloning MusePose ==="
 if [ ! -d "/content/MusePose" ]; then
   git clone https://github.com/TMElyralab/MusePose.git /content/MusePose
-  echo "    MusePose cloned."
-else
-  echo "    MusePose already present — skipping clone."
 fi
+echo "    MusePose ready."
 
 echo "=== [6/8] Installing Python packages ==="
-# Gradio 4.44 requires HfFolder, removed in huggingface_hub >= 0.26
-pip install -q "huggingface_hub>=0.19.3,<0.26.0"
+# Colab pre-installs gradio 5.x — force downgrade to 4.44
+pip uninstall -y gradio 2>/dev/null || true
+pip install -q "setuptools<82" "huggingface_hub==0.25.2"
+pip install -q --force-reinstall "gradio==4.44.0"
 
 pip install -q \
-  gradio==4.44.0 \
   torch torchvision torchaudio \
   transformers accelerate \
   openai-whisper \
@@ -61,16 +57,21 @@ pip install -q \
   face-alignment \
   xformers
 
-echo "=== [7/8] Installing MeloTTS (voice cloning) ==="
+echo "=== [7/8] Installing MeloTTS (voice cloning — Python 3.11 only) ==="
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-python "$SCRIPT_DIR/install_melo.py" || echo "    ⚠️  MeloTTS failed — use Kokoro voices or switch to runtime 2025.07"
+python "$SCRIPT_DIR/install_melo.py" || true
 
-echo "=== [8/8] Installing repo-specific requirements ==="
-pip install -q -r /content/SadTalker/requirements.txt || true
-pip install -q -r /content/OpenVoice/requirements.txt || true
+echo "=== [8/8] Skipping repo requirements.txt (avoids numpy rebuild conflicts on Colab) ==="
+echo "    Core deps already installed above."
 
-# Re-pin huggingface_hub — OpenVoice/SadTalker may upgrade it and break Gradio
-pip install -q "huggingface_hub>=0.19.3,<0.26.0"
+# Keep huggingface_hub compatible with Gradio 4.44
+pip install -q "huggingface_hub==0.25.2"
 
 echo ""
-echo "=== Setup complete. Run download_weights.py next. ==="
+if [ "$PY_MINOR" -ge 12 ]; then
+  echo "=== Setup done (limited mode on Python 3.12) ==="
+  echo "    ✅ Kokoro preset voices + SadTalker avatar video"
+  echo "    ❌ Voice cloning — switch to runtime 2025.07 to enable"
+else
+  echo "=== Setup complete. Run download_weights.py next. ==="
+fi

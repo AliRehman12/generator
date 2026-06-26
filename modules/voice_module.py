@@ -14,12 +14,24 @@ from config import (
     DEVICE,
     OPENVOICE_DIR,
     OPENVOICE_CHECKPOINT_DIR,
+    MELO_TTS_DIR,
     TEMP_DIR,
     USE_HALF_PRECISION,
 )
 from modules.vram_utils import clear_vram
 
 sys.path.insert(0, OPENVOICE_DIR)
+if os.path.isdir(MELO_TTS_DIR):
+    sys.path.insert(0, MELO_TTS_DIR)
+
+
+def is_melo_available() -> bool:
+    """Return True if MeloTTS is importable (voice cloning available)."""
+    try:
+        from melo.api import TTS  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 _tone_color_converter = None
 

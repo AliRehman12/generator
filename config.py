@@ -16,6 +16,7 @@ SADTALKER_DIR = "/content/SadTalker"
 OPENVOICE_DIR = "/content/OpenVoice"
 MUSEPOSE_DIR = "/content/MusePose"
 KOKORO_DIR = "/content/Kokoro"
+MELO_TTS_DIR = "/content/MeloTTS"
 
 TEMP_DIR = "/content/avatar_temp"
 

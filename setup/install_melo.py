@@ -1,16 +1,38 @@
 """
 Install MeloTTS for OpenVoice voice cloning.
 
-MeloTTS does not reliably install on Python 3.12 (Colab default).
-On 3.12 we try a no-deps editable install; if that fails, use runtime 2025.07.
+Requires Python 3.11 (Colab runtime version 2025.07).
+Python 3.12 is not supported by MeloTTS upstream.
 """
 
 import os
 import subprocess
 import sys
 
-
 MELO_DIR = "/content/MeloTTS"
+
+# English voice-cloning deps (from MeloTTS setup.py)
+MELO_EN_DEPS = [
+    "anyascii==0.3.2",
+    "g2p_en==2.1.0",
+    "txtsplit",
+    "jamo==0.4.1",
+    "langid==1.1.6",
+    "num2words==0.5.12",
+    "cn2an==0.5.22",
+    "inflect==7.0.0",
+    "pypinyin==0.50.0",
+    "unidecode==1.3.7",
+    "loguru==0.7.2",
+    "tensorboard==2.16.2",
+    "eng-to-ipa",
+    "pydub",
+    "nltk",
+    "tqdm",
+    "cached_path",
+    "gruut-ipa",
+    "gruut_lang_en",
+]
 
 
 def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
@@ -18,41 +40,40 @@ def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, check=check)
 
 
+def _ensure_melo_on_path():
+    if os.path.isdir(MELO_DIR) and MELO_DIR not in sys.path:
+        sys.path.insert(0, MELO_DIR)
+
+
+def verify_melo() -> bool:
+    _ensure_melo_on_path()
+    try:
+        from melo.api import TTS  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
 def install_melo() -> bool:
     major, minor = sys.version_info.major, sys.version_info.minor
-    print(f"Python {major}.{minor}")
+    print(f"Python {major}.{minor}.{sys.version_info.micro}")
 
     if (major, minor) >= (3, 12):
         print(
-            "⚠️  Python 3.12 detected — MeloTTS often fails here.\n"
-            "   Recommended: Runtime → Change runtime type → Runtime version → 2025.07\n"
-            "   Then Runtime → Restart session and re-run setup."
+            "\n❌ STOP: Python 3.12 — MeloTTS cannot be installed.\n"
+            "   Voice cloning is disabled until you switch runtime.\n\n"
+            "   Fix (required for voice cloning):\n"
+            "     Runtime → Change runtime type\n"
+            "     → Hardware accelerator: GPU (T4)\n"
+            "     → Runtime version: 2025.07\n"
+            "     → Save → Restart session → re-run setup\n"
         )
+        return False
 
-    run(["pip", "install", "-q", "--upgrade", "pip", "setuptools", "wheel"])
+    # setuptools 82+ breaks torch on Colab
+    run(["pip", "install", "-q", "pip", "setuptools<82", "wheel"])
 
-    run(
-        [
-            "pip",
-            "install",
-            "-q",
-            "cn2an",
-            "pypinyin",
-            "inflect",
-            "unidecode",
-            "eng-to-ipa",
-            "pydub",
-            "nltk",
-            "loguru",
-            "tqdm",
-            "cached_path",
-            "gruut-ipa",
-            "gruut_lang_en",
-            "gruut_lang_de",
-            "gruut_lang_es",
-            "gruut_lang_fr",
-        ]
-    )
+    run(["pip", "install", "-q"] + MELO_EN_DEPS)
 
     if not os.path.isdir(MELO_DIR):
         run(
@@ -66,19 +87,12 @@ def install_melo() -> bool:
             ]
         )
 
-    # gruut core often fails to build on 3.12 — English may still work without it
-    gruut = subprocess.run(["pip", "install", "-q", "gruut==2.2.3"], capture_output=True)
-    if gruut.returncode != 0:
-        print("  gruut core skipped (English-only voice cloning may still work)")
+    subprocess.run(["pip", "install", "-q", "gruut==2.2.3"], capture_output=True)
 
-    if (major, minor) < (3, 12):
-        # Python 3.11 and below: standard install usually works
-        try:
-            run(["pip", "install", "-q", "git+https://github.com/myshell-ai/MeloTTS.git"])
-        except subprocess.CalledProcessError:
-            run(["pip", "install", "-q", "--no-deps", "-e", MELO_DIR])
-    else:
-        run(["pip", "install", "-q", "--no-deps", "-e", MELO_DIR])
+    try:
+        run(["pip", "install", "-q", "git+https://github.com/myshell-ai/MeloTTS.git"])
+    except subprocess.CalledProcessError:
+        run(["pip", "install", "-q", "-e", MELO_DIR])
 
     run(
         [
@@ -88,23 +102,13 @@ def install_melo() -> bool:
         ]
     )
 
-    try:
-        from melo.api import TTS  # noqa: F401
-
+    if verify_melo():
         print("✅ MeloTTS installed successfully")
         return True
-    except Exception as exc:
-        print(f"❌ MeloTTS import failed: {exc}")
-        print(
-            "\nVoice cloning will NOT work until MeloTTS is installed.\n"
-            "You can still use Kokoro preset voices (uncheck 'Use voice cloning' in the app).\n\n"
-            "Fix for Colab:\n"
-            "  1. Runtime → Change runtime type\n"
-            "  2. Hardware accelerator: GPU (T4)\n"
-            "  3. Runtime version: 2025.07  ← Python 3.11\n"
-            "  4. Save → Restart session → re-run setup cells"
-        )
-        return False
+
+    print("❌ MeloTTS import failed after install.")
+    print("   Try: Runtime version → 2025.07, restart, re-run setup.")
+    return False
 
 
 if __name__ == "__main__":
