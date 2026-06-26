@@ -58,6 +58,7 @@ pip install -q \
   scikit-image scipy \
   yacs pyyaml \
   face-alignment \
+  kornia \
   xformers
 
 echo "=== [7/8] Installing MeloTTS (voice cloning — Python 3.11 only) ==="
