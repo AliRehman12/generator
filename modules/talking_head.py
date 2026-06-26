@@ -85,9 +85,6 @@ def generate_talking_head(
     if enhancer and enhancer.lower() != "none":
         cmd += ["--enhancer", enhancer]
 
-    if USE_HALF_PRECISION:
-        cmd.append("--fp16")
-
     try:
         result = subprocess.run(
             cmd,

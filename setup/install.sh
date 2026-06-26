@@ -65,8 +65,14 @@ echo "=== [7/8] Installing MeloTTS (voice cloning — Python 3.11 only) ==="
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 python "$SCRIPT_DIR/install_melo.py" || true
 
-echo "=== [8/8] Skipping repo requirements.txt (avoids numpy rebuild conflicts on Colab) ==="
-echo "    Core deps already installed above."
+echo "=== [8/8] Patching basicsr for newer torchvision ==="
+BASICSR_FILE="$(python -c 'import basicsr, os; print(os.path.join(os.path.dirname(basicsr.__file__), "data", "degradations.py"))' 2>/dev/null || echo "")"
+if [ -n "$BASICSR_FILE" ] && [ -f "$BASICSR_FILE" ]; then
+  sed -i 's|from torchvision.transforms.functional_tensor import rgb_to_grayscale|from torchvision.transforms.functional import rgb_to_grayscale|g' "$BASICSR_FILE"
+  echo "    ✅ basicsr patched ($BASICSR_FILE)"
+else
+  echo "    ⚠️  basicsr not found — patch will run again via download_weights.py"
+fi
 
 # Keep Gradio stack compatible after other installs — huggingface_hub MUST be pinned last
 pip install -q "pydantic==2.10.6" "starlette<1.0,>=0.37" "fastapi<0.116,>=0.110" "gradio==4.44.1"

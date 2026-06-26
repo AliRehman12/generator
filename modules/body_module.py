@@ -47,11 +47,30 @@ def animate_body(
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
-    config_path = os.path.join(MUSEPOSE_DIR, "configs/test/test_stage2.yaml")
+    # MusePose entry points (newer repo layout)
+    candidates = [
+        ("test_stage_2.py", "./configs/test_stage_2.yaml"),
+        ("test_stage_1.py", "./configs/test_stage_1.yaml"),
+        ("pose2vid.py", "configs/test/test_stage2.yaml"),
+    ]
+    script_name, config_rel = next(
+        (
+            (s, c)
+            for s, c in candidates
+            if os.path.exists(os.path.join(MUSEPOSE_DIR, s))
+        ),
+        (None, None),
+    )
+    if script_name is None:
+        raise FileNotFoundError(
+            "MusePose inference script not found. The MusePose repo layout has changed. "
+            "Body animation is currently not supported in this build — use Tab 2 (talking head) instead."
+        )
+
     cmd = [
         sys.executable,
-        os.path.join(MUSEPOSE_DIR, "pose2vid.py"),
-        "--config", config_path,
+        os.path.join(MUSEPOSE_DIR, script_name),
+        "--config", os.path.join(MUSEPOSE_DIR, config_rel),
         "--ref_image_path", reference_image_path,
         "--ref_video_path", driving_video_path,
         "--output_path", output_path,
