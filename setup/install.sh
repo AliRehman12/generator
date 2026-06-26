@@ -3,11 +3,22 @@
 # Safe to run multiple times — skips steps that are already done.
 set -e
 
-echo "=== [1/7] Installing system dependencies ==="
+echo "=== [1/8] Checking Python version ==="
+python -c "
+import sys
+v = sys.version_info
+print(f'    Python {v.major}.{v.minor}.{v.micro}')
+if v >= (3, 12):
+    print('    ⚠️  Python 3.12 — voice cloning needs runtime version 2025.07 (Python 3.11)')
+else:
+    print('    ✅ Python version OK for MeloTTS')
+"
+
+echo "=== [2/8] Installing system dependencies ==="
 apt-get install -y ffmpeg libsndfile1 cmake build-essential > /dev/null 2>&1
 echo "    ffmpeg + libsndfile1 ready."
 
-echo "=== [2/7] Cloning SadTalker ==="
+echo "=== [3/8] Cloning SadTalker ==="
 if [ ! -d "/content/SadTalker" ]; then
   git clone https://github.com/OpenTalker/SadTalker.git /content/SadTalker
   echo "    SadTalker cloned."
@@ -15,7 +26,7 @@ else
   echo "    SadTalker already present — skipping clone."
 fi
 
-echo "=== [3/7] Cloning OpenVoice v2 ==="
+echo "=== [4/8] Cloning OpenVoice v2 ==="
 if [ ! -d "/content/OpenVoice" ]; then
   git clone https://github.com/myshell-ai/OpenVoice.git /content/OpenVoice
   echo "    OpenVoice cloned."
@@ -23,7 +34,7 @@ else
   echo "    OpenVoice already present — skipping clone."
 fi
 
-echo "=== [4/7] Cloning MusePose ==="
+echo "=== [5/8] Cloning MusePose ==="
 if [ ! -d "/content/MusePose" ]; then
   git clone https://github.com/TMElyralab/MusePose.git /content/MusePose
   echo "    MusePose cloned."
@@ -31,7 +42,7 @@ else
   echo "    MusePose already present — skipping clone."
 fi
 
-echo "=== [5/7] Installing Python packages ==="
+echo "=== [6/8] Installing Python packages ==="
 # Gradio 4.44 requires HfFolder, removed in huggingface_hub >= 0.26
 pip install -q "huggingface_hub>=0.19.3,<0.26.0"
 
@@ -50,18 +61,11 @@ pip install -q \
   face-alignment \
   xformers
 
-echo "=== [6/7] Installing MeloTTS from GitHub ==="
-# MeloTTS is not on PyPI — install deps first for Python 3.12
-pip install -q \
-  cn2an pypinyin inflect unidecode eng-to-ipa pydub \
-  "gruut[de,es,fr]==2.2.3" \
-  nltk
+echo "=== [7/8] Installing MeloTTS (voice cloning) ==="
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+python "$SCRIPT_DIR/install_melo.py" || echo "    ⚠️  MeloTTS failed — use Kokoro voices or switch to runtime 2025.07"
 
-pip install -q --no-build-isolation git+https://github.com/myshell-ai/MeloTTS.git
-
-python -c "import nltk; nltk.download('averaged_perceptron_tagger_eng', quiet=True)" 2>/dev/null || true
-
-echo "=== [7/7] Installing repo-specific requirements ==="
+echo "=== [8/8] Installing repo-specific requirements ==="
 pip install -q -r /content/SadTalker/requirements.txt || true
 pip install -q -r /content/OpenVoice/requirements.txt || true
 
