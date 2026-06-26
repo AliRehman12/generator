@@ -15,6 +15,55 @@ from datetime import datetime
 import gradio as gr
 import torch
 
+
+def _patch_basicsr_torchvision():
+    """basicsr imports torchvision.transforms.functional_tensor (removed in newer torchvision).
+    Patch every time the app starts — safe to re-run."""
+    try:
+        import basicsr
+        target = os.path.join(
+            os.path.dirname(basicsr.__file__), "data", "degradations.py"
+        )
+        if not os.path.exists(target):
+            return
+        with open(target, "r") as f:
+            content = f.read()
+        bad = "from torchvision.transforms.functional_tensor import rgb_to_grayscale"
+        good = "from torchvision.transforms.functional import rgb_to_grayscale"
+        if bad in content:
+            with open(target, "w") as f:
+                f.write(content.replace(bad, good))
+            print(f"🔧 Patched basicsr (torchvision compat) at {target}")
+    except Exception as e:
+        print(f"⚠️  basicsr patch skipped: {e}")
+
+
+def _ensure_openvoice_weights():
+    """Download OpenVoice v2 checkpoints if missing — self-healing."""
+    ckpt = "/content/OpenVoice/checkpoints_v2/converter/checkpoint.pth"
+    if os.path.exists(ckpt):
+        return
+    if not os.path.isdir("/content/OpenVoice"):
+        return
+    print("📥 OpenVoice v2 weights missing — downloading (~200 MB, one-time)…")
+    url = "https://myshell-public-repo-host.s3.amazonaws.com/openvoice/checkpoints_v2_0417.zip"
+    zip_path = "/content/OpenVoice/checkpoints_v2.zip"
+    try:
+        import urllib.request
+        urllib.request.urlretrieve(url, zip_path)
+        import zipfile
+        with zipfile.ZipFile(zip_path, "r") as z:
+            z.extractall("/content/OpenVoice/")
+        os.remove(zip_path)
+        print("✅ OpenVoice v2 weights ready.")
+    except Exception as e:
+        print(f"⚠️  OpenVoice v2 download failed: {e}")
+
+
+_patch_basicsr_torchvision()
+_ensure_openvoice_weights()
+
+
 # Fix Gradio 4.44 + Pydantic 2.11+ crash on Colab (bool JSON schema)
 def _patch_gradio_client_bool_schema():
     try:
