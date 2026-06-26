@@ -38,10 +38,10 @@ fi
 echo "    MusePose ready."
 
 echo "=== [6/8] Installing Python packages ==="
-# Colab pre-installs gradio 5.x — force downgrade to 4.44
+# Colab pre-installs gradio 5.x + pydantic 2.11+ — pin compatible versions
 pip uninstall -y gradio 2>/dev/null || true
-pip install -q "setuptools<82" "huggingface_hub==0.25.2"
-pip install -q --force-reinstall "gradio==4.44.0"
+pip install -q "setuptools<82" "pydantic==2.10.6" "huggingface_hub==0.25.2"
+pip install -q --force-reinstall "gradio==4.44.1"
 
 pip install -q \
   torch torchvision torchaudio \
@@ -64,8 +64,8 @@ python "$SCRIPT_DIR/install_melo.py" || true
 echo "=== [8/8] Skipping repo requirements.txt (avoids numpy rebuild conflicts on Colab) ==="
 echo "    Core deps already installed above."
 
-# Keep huggingface_hub compatible with Gradio 4.44
-pip install -q "huggingface_hub==0.25.2"
+# Keep Gradio + Pydantic compatible after other installs
+pip install -q "pydantic==2.10.6" "gradio==4.44.1" "huggingface_hub==0.25.2"
 
 echo ""
 if [ "$PY_MINOR" -ge 12 ]; then

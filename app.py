@@ -15,6 +15,29 @@ from datetime import datetime
 import gradio as gr
 import torch
 
+# Fix Gradio 4.44 + Pydantic 2.11+ crash on Colab (bool JSON schema)
+def _patch_gradio_client_bool_schema():
+    try:
+        import gradio_client.utils as client_utils
+
+        if getattr(client_utils, "_bool_schema_patched", False):
+            return
+
+        _orig_get_type = client_utils.get_type
+
+        def get_type(schema):
+            if isinstance(schema, bool):
+                return "bool"
+            return _orig_get_type(schema)
+
+        client_utils.get_type = get_type
+        client_utils._bool_schema_patched = True
+    except Exception:
+        pass
+
+
+_patch_gradio_client_bool_schema()
+
 from config import DEVICE, DRIVE_OUTPUT_DIR, TEMP_DIR
 from modules.vram_utils import clear_vram, get_vram_usage
 
