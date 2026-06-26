@@ -41,12 +41,15 @@ pip install -q \
   soundfile librosa \
   gfpgan \
   basicsr facexlib realesrgan \
-  melo-tts \
   imageio "imageio-ffmpeg" \
   scikit-image scipy \
   yacs pyyaml \
   dlib face-alignment \
   xformers
+
+echo "=== Installing MeloTTS from GitHub ==="
+pip install -q git+https://github.com/myshell-ai/MeloTTS.git
+python -c "import nltk; nltk.download('averaged_perceptron_tagger_eng')" 2>/dev/null || true
 
 echo "=== [6/6] Installing repo-specific requirements ==="
 pip install -q -r /content/SadTalker/requirements.txt
